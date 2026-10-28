@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>常識小學霸：生存大冒險 (General Studies Survival)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts for Cute Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Noto+Sans+HK:wght@500;700;900&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+      box-sizing: border-box;
+      touch-action: none;
+      -webkit-touch-callout: none;
+    }
+    body {
+      font-family: 'Fredoka', 'Noto Sans HK', sans-serif;
+      background-color: #1a1c29;
+      color: #fff;
+      overflow: hidden;
+      touch-action: none;
+    }
+    canvas {
+      display: block;
+      background: radial-gradient(circle at center, #2d3250 0%, #171926 100%);
+      touch-action: none;
+    }
+    /* Cute animations & styling */
+    .bounce-in {
+      animation: bounceIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .pulse-glow {
+      animation: pulseGlow 1.5s infinite alternate;
+    }
+    @keyframes bounceIn {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+      100% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.9); }
+    }
+    /* Custom Scrollbar for Modal */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #f59e0b;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-center items-center relative select-none">
+
+  <!-- HUD Overlay -->
+  <div id="hud" class="absolute top-0 left-0 w-full p-3 pointer-events-none flex flex-col justify-between z-10 space-y-2">
+    <!-- Top Bar: Level, HP, EXP, Kills -->
+    <div class="flex items-center justify-between w-full max-w-4xl mx-auto bg-slate-900/80 backdrop-blur-md rounded-2xl p-3 border-2 border-yellow-400 shadow-lg pointer-events-auto">
+      
+      <!-- Player Info & HP -->
+      <div class="flex items-center space-x-3 w-1/3">
+        <div class="relative">
+          <div id="playerAvatar" class="w-12 h-12 rounded-full bg-gradient-to-tr from-yellow-400 to-amber-200 border-2 border-white flex items-center justify-center text-2xl shadow-md">
+            🎓
+          </div>
+          <span id="levelBadge" class="absolute -bottom-1 -right-1 bg-rose-500 text-white font-black text-xs px-2 py-0.5 rounded-full border border-white">
+            Lv.1
+          </span>
+        </div>
+        <div class="flex-1">
+          <div class="flex justify-between text-xs font-bold text-yellow-300 mb-1">
+            <span>生命值</span>
+            <span id="hpText">100 / 100</span>
+          </div>
+          <div class="w-full bg-slate-700 h-3.5 rounded-full overflow-hidden border border-slate-600">
+            <div id="hpBar" class="bg-gradient-to-r from-red-500 to-rose-400 h-full w-full transition-all duration-200"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXP Bar & Wave Info -->
+      <div class="w-1/3 px-3 flex flex-col items-center">
+        <div class="text-xs font-extrabold text-cyan-300 tracking-wider mb-1 flex items-center gap-1">
+          <span>✨ 經驗值</span>
+          <span id="expText" class="text-white">(0%)</span>
+        </div>
+        <div class="w-full bg-slate-700 h-3 rounded-full overflow-hidden border border-slate-600">
+          <div id="expBar" class="bg-gradient-to-r from-cyan-400 to-blue-500 h-full w-0% transition-all duration-200"></div>
+        </div>
+      </div>
+
+      <!-- Stats: Kills & Score -->
+      <div class="flex items-center justify-end space-x-4 w-1/3 font-black text-sm">
+        <div class="text-center">
+          <div class="text-gray-400 text-xs font-bold">擊倒敵人</div>
+          <div id="killText" class="text-yellow-400 text-base">0</div>
+        </div>
+        <div class="text-center">
+          <div class="text-gray-400 text-xs font-bold">答對題數</div>
+          <div id="scoreText" class="text-emerald-400 text-base">0</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Active Boss HP Bar (Hidden by default) -->
+    <div id="bossHud" class="hidden w-full max-w-xl mx-auto bg-slate-900/90 border-2 border-rose-500 rounded-xl p-2.5 shadow-2xl pointer-events-auto bounce-in">
+      <div class="flex justify-between items-center mb-1">
+        <div class="flex items-center gap-2">
+          <span id="bossIcon" class="text-2xl">🔥</span>
+          <span id="bossName" class="font-black text-rose-400 text-sm md:text-base">Boss: 火焰大魔王</span>
+        </div>
+        <span id="bossHpText" class="text-xs font-bold text-gray-200">1000 / 1000</span>
+      </div>
+      <div class="w-full bg-slate-800 h-4 rounded-full overflow-hidden border border-rose-900">
+        <div id="bossHpBar" class="bg-gradient-to-r from-rose-600 via-orange-500 to-yellow-400 h-full w-full transition-all duration-200"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Canvas -->
+  <canvas id="gameCanvas" class="w-full h-full"></canvas>
+
+  <!-- Touch Joystick (Always responsive on iPad & mobile devices) -->
+  <div id="joystickZone" class="absolute bottom-6 left-6 w-32 h-32 md:w-36 md:h-36 rounded-full border-4 border-yellow-400/60 bg-slate-900/60 backdrop-blur-md pointer-events-auto flex items-center justify-center z-20 touch-none shadow-2xl">
+    <div class="absolute inset-2 rounded-full border-2 border-dashed border-white/30 pointer-events-none"></div>
+    <div id="joystickKnob" class="w-14 h-14 rounded-full bg-gradient-to-tr from-yellow-400 to-amber-200 shadow-xl border-2 border-white transform translate-x-0 translate-y-0 transition-transform duration-75 flex items-center justify-center text-lg font-black text-slate-900 pointer-events-none">
+      🕹️
+    </div>
+  </div>
+
+  <!-- Start Screen Modal -->
+  <div id="startModal" class="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border-4 border-yellow-400 rounded-3xl p-6 md:p-8 max-w-lg w-full text-center shadow-2xl bounce-in space-y-5">
+      <div class="inline-block bg-yellow-400 text-slate-950 px-4 py-1 rounded-full font-black text-xs tracking-wider uppercase">
+        香港小學常識科特別企劃
+      </div>
+      <h1 class="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500">
+        常識小學霸<br><span class="text-2xl md:text-3xl text-white">生存大冒險 ⚔️</span>
+      </h1>
+
+      <div class="bg-slate-800/90 rounded-2xl p-4 text-left text-sm text-slate-200 space-y-2 border border-slate-700">
+        <p class="font-bold text-yellow-300 text-base mb-1">🎮 遊戲說明與玩法：</p>
+        <p>1. <b>移動主角</b>：使用 <kbd class="px-1.5 py-0.5 bg-slate-700 rounded text-amber-300">WASD</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-700 rounded text-amber-300">方向鍵</kbd> 或手機螢幕拖拽。</p>
+        <p>2. <b>自動攻擊</b>：角色會自動施放技能擊退卡通怪物。</p>
+        <p>3. <b>答題升級</b>：收集經驗寶石升級，回答常識科問題即可獲得強大技能加成！</p>
+        <p>4. <b>Boss 戰機制</b>：關卡包含 6 位大 Boss，Boss 每扣一定血量會觸發挑戰題。<b>答錯 Boss 會回血喔！</b></p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-xs font-bold text-slate-300">
+        <div class="bg-rose-950/60 border border-rose-500/40 p-2 rounded-xl">🩹 受傷處理急救</div>
+        <div class="bg-orange-950/60 border border-orange-500/40 p-2 rounded-xl">🔥 走火警與防災</div>
+        <div class="bg-emerald-950/60 border border-emerald-500/40 p-2 rounded-xl">🌱 正面人生觀</div>
+        <div class="bg-cyan-950/60 border border-cyan-500/40 p-2 rounded-xl">⚡ 能量轉換過程</div>
+      </div>
+
+      <button id="startBtn" class="w-full py-4 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 font-black text-xl rounded-2xl shadow-xl transition-all transform hover:scale-105 active:scale-95 pulse-glow">
+        開始冒險挑戰！🚀
+      </button>
+    </div>
+  </div>
+
+  <!-- Question Modal -->
+  <div id="questionModal" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-lg flex items-center justify-center p-4 z-40">
+    <div class="bg-slate-900 border-4 border-amber-400 rounded-3xl p-6 max-w-xl w-full text-center shadow-2xl bounce-in space-y-4 relative overflow-hidden">
+      
+      <!-- Top Header Category -->
+      <div class="flex justify-between items-center">
+        <span id="qCategory" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-xs px-3 py-1 rounded-full shadow">
+          受傷處理知識
+        </span>
+        <span id="qTriggerType" class="text-xs font-bold text-cyan-300 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+          ✨ 升級考驗
+        </span>
+      </div>
+
+      <!-- Question Text -->
+      <h2 id="qTitle" class="text-lg md:text-xl font-black text-white text-left leading-relaxed pt-2">
+        題目載入中...
+      </h2>
+
+      <!-- Options List -->
+      <div id="qOptions" class="grid grid-cols-1 gap-2.5 pt-2">
+        <!-- Dynmically generated option buttons -->
+      </div>
+
+      <!-- Explanation Feedback Overlay (Shows after answer) -->
+      <div id="qFeedback" class="hidden bg-slate-800/95 border-2 border-emerald-400 rounded-2xl p-4 text-left space-y-2">
+        <div class="flex items-center gap-2 font-black text-base" id="qResultBanner">
+          <!-- Correct / Wrong Banner -->
+        </div>
+        <p id="qExplanation" class="text-xs md:text-sm text-slate-200 leading-relaxed"></p>
+        <button id="continueBtn" class="w-full mt-2 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm rounded-xl transition-all">
+          繼續遊戲 ➔
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Skill Selection Upgrade Modal -->
+  <div id="upgradeModal" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-40">
+    <div class="bg-slate-900 border-4 border-yellow-400 rounded-3xl p-6 max-w-2xl w-full text-center shadow-2xl bounce-in space-y-5">
+      <div>
+        <h2 class="text-2xl font-black text-yellow-400">🎉 答對了！等級提升！</h2>
+        <p class="text-xs text-slate-300">請選擇一項技能獲得強大加成：</p>
+      </div>
+
+      <!-- 3 Skill Choice Cards -->
+      <div id="skillCards" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Dynamically injected -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over / Victory Modal -->
+  <div id="endModal" class="hidden absolute inset-0 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border-4 border-yellow-400 rounded-3xl p-6 md:p-8 max-w-md w-full text-center shadow-2xl bounce-in space-y-5">
+      <div id="endTitle" class="text-4xl font-black text-yellow-400">
+        🏆 冒險成功！
+      </div>
+
+      <div id="endEmoji" class="text-6xl my-2">🎉</div>
+
+      <div class="bg-slate-800 rounded-2xl p-4 text-slate-200 space-y-2 border border-slate-700 text-sm">
+        <div class="flex justify-between">
+          <span>最終等級：</span>
+          <span id="endLevel" class="font-bold text-yellow-400">Lv.10</span>
+        </div>
+        <div class="flex justify-between">
+          <span>擊倒怪物：</span>
+          <span id="endKills" class="font-bold text-cyan-400">150</span>
+        </div>
+        <div class="flex justify-between">
+          <span>常識問答準確率：</span>
+          <span id="endAccuracy" class="font-bold text-emerald-400">100% (8/8)</span>
+        </div>
+        <div class="flex justify-between border-t border-slate-700 pt-2 font-black text-base">
+          <span>綜合評價：</span>
+          <span id="endRank" class="text-yellow-300">S 級常識大師</span>
+        </div>
+      </div>
+
+      <button id="restartBtn" class="w-full py-4 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 text-slate-950 font-black text-lg rounded-2xl shadow-xl transition-all transform hover:scale-105 active:scale-95">
+        再次挑戰 🔄
+      </button>
+    </div>
+  </div>
+
+  <!-- JavaScript Code logic -->
+  <script>
+    /* =========================================================================
+       1. WEB AUDIO API SYNTHESIZER (No external sound files needed!)
+       ========================================================================= */
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioCtx();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playShoot() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+      }
+      playGem() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1760, this.ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.08);
+      }
+      playCorrect() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+          gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.08 + 0.15);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.08);
+          osc.stop(now + idx * 0.08 + 0.15);
+        });
+      }
+      playWrong() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(100, this.ctx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.25);
+      }
+      playHit() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.06);
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.06);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.06);
+      }
+    }
+    const audio = new SoundFX();
+
+    /* =========================================================================
+       2. HONG KONG GENERAL STUDIES 30-QUESTION POOL (小學常識科 30題)
+       ========================================================================= */
+    const QUESTION_BANK = [
+      // --- 課題 1：受傷處理知識 (Injury First Aid) ---
+      {
+        id: 1,
+        category: "受傷處理",
+        question: "手指不小心輕微燙傷時，最正確的即時處理方法是什麼？",
+        options: ["用流動的冷水沖洗患處 15-20 分鐘", "塗抹牙膏或醬油舒緩", "立刻用冰塊直接緊壓傷口", "用力揉搓燙傷的皮膚"],
+        answer: 0,
+        explanation: "輕微燙傷應立即使用流動的冷水持續沖洗 15-20 分鐘降溫，切勿隨意塗抹牙膏或醬油，以免引發傷口感染！"
+      },
+      {
+        id: 2,
+        category: "受傷處理",
+        question: "流鼻血時，以下哪項是正確的處理姿勢？",
+        options: ["頭部稍微向前傾，捏住雙側鼻翼", "頭部向後仰，用口呼吸", "立刻躺平在地上", "用熱毛巾敷在額頭上"],
+        answer: 0,
+        explanation: "流鼻血時頭部應保持微向前傾，捏住鼻翼兩側約 5-10 分鐘。頭部後仰會導致血液流入喉嚨或胃部引發不適！"
+      },
+      {
+        id: 3,
+        category: "受傷處理",
+        question: "運動時不慎扭傷腳踝，在受傷初期（24小時內）應該怎樣做？",
+        options: ["進行適度冷敷減輕腫脹與疼痛", "立刻進行強烈揉搓按摩", "用熱毛巾熱敷促進血液循環", "繼續進行劇烈跑步運動"],
+        answer: 0,
+        explanation: "急性扭傷初期應停止運動並進行冷敷，有助減輕組織腫脹與內出血。千萬不可按摩或熱敷，否則會加劇腫脹！"
+      },
+      {
+        id: 4,
+        category: "受傷處理",
+        question: "皮膚不小心擦傷並有些微出血，應該如何清潔傷口？",
+        options: ["用清水或生理鹽水沖洗，再塗抹消毒藥水", "直接用髒布用力擦拭", "塗上酒精直接強烈劇痛消毒", "不處理直接貼上密封膠布"],
+        answer: 0,
+        explanation: "擦傷時應先用乾淨清水或生理鹽水沖洗掉泥沙雜質，再塗上消毒藥水並蓋上無菌紗布保護。"
+      },
+      {
+        id: 5,
+        category: "受傷處理",
+        question: "若同學在小息時頭部受到強烈撞擊並感到嘔吐昏迷，應該怎樣做？",
+        options: ["保持患者平躺切勿隨意搬動，立刻通知老師求助", "用力拉扯同學站立起來", "不斷搖晃同學的頭部使其清醒", "給同學餵食熱水"],
+        answer: 0,
+        explanation: "頭部撞擊可能涉及頸椎或腦部受傷，應保持患者平躺並立刻尋求專業急救，切忌隨意搬動！"
+      },
+      {
+        id: 6,
+        category: "受傷處理",
+        question: "被蜜蜂叮咬後，以下哪種做法是不正確的？",
+        options: ["用手用力擠壓傷口把毒液擠出", "用硬卡片輕輕刮除殘留的蜂針", "冷敷傷口減輕腫痛", "若出現呼吸困難立刻求醫"],
+        answer: 0,
+        explanation: "千萬不要用力擠壓叮咬處，否則會把蜂針剩餘的毒液擠入皮膚深層！應輕刮除針頭並冷敷。"
+      },
+      {
+        id: 7,
+        category: "受傷處理",
+        question: "熱水燙傷且皮膚起了水泡，我們應該怎樣處理？",
+        options: ["切勿弄破水泡，用清潔紗布覆蓋並求醫", "拿針把水泡刺破擠出水液", "塗上草藥敷料撕開水泡皮", "用手直接抓摳水泡"],
+        answer: 0,
+        explanation: "水泡是身體保護傷口的天然屏障，自行刺破極易引起細菌二次感染，應維持完整並尋求醫生協助。"
+      },
+
+      // --- 課題 2：走火警與防災知識 (Fire Safety) ---
+      {
+        id: 8,
+        category: "走火警與防災",
+        question: "在香港居住大廈發生火警逃生時，我們常說的「逃生三寶」不包括以下哪項？",
+        options: ["貴重金飾珠寶", "濕毛巾", "門卡 / 門鑰匙", "流動電話 (手機)"],
+        answer: 0,
+        explanation: "香港消防處建議的「逃生三寶」是：濕毛巾（捂口鼻）、門卡/鑰匙（回房備用）及手機（求救）。切勿為貪戀財物延誤逃生時間！"
+      },
+      {
+        id: 9,
+        category: "走火警與防災",
+        question: "逃離火場經過防煙門時，我們應該如何正確處理防煙門？",
+        options: ["順手把防煙門關上", "將防煙門用重物固定長期打開", "將防煙門鎖死", "拆除防煙門"],
+        answer: 0,
+        explanation: "防煙門能有效阻隔濃煙和火勢蔓延，通過後必須隨手關上防煙門！"
+      },
+      {
+        id: 10,
+        category: "走火警與防災",
+        question: "如果逃生通道充滿濃煙，我們應該採取什麼姿勢逃生？",
+        options: ["匍匐低姿態前進，並用濕毛巾捂住口鼻", "站立快速昂頭跑步", "閉上眼睛邊喊邊跑", "跳躍前進"],
+        answer: 0,
+        explanation: "濃煙會向上上升，貼近地面約 30-50 公分處空氣較新鮮且溫度較低，故應採取匍匐低姿態逃生。"
+      },
+      {
+        id: 11,
+        category: "走火警與防災",
+        question: "火警發生時，為什麼絕對不能乘坐升降機（電梯）逃生？",
+        options: ["電梯可能因電力中斷停匿或變為煙囪", "電梯速度太慢", "電梯會消耗電力", "電梯會吸引火源"],
+        answer: 0,
+        explanation: "火警時電力系統極易故障導致困在電梯內，且電梯井會像煙囪一樣快速吸入毒煙與烈火，極度危險！"
+      },
+      {
+        id: 12,
+        category: "走火警與防災",
+        question: "在香港遇到火警或緊急事故時，應撥打哪一個求助電話？",
+        options: ["999", "911", "112", "108"],
+        answer: 0,
+        explanation: "香港的緊急求助電話號碼為 999（包含報警、消防及救護車服務）。"
+      },
+      {
+        id: 13,
+        category: "走火警與防災",
+        question: "若門外充滿濃煙高溫無法逃生，留在室內避難時以下哪項最正確？",
+        options: ["關閉房門並用濕布堵住門縫，在窗邊求救", "打開所有窗戶與房門讓空氣對流", "躲在衣櫃內部閉氣", "跳出窗外"],
+        answer: 0,
+        explanation: "若受困室內，應關門並用濕毛巾堵住門縫阻止煙霧進入，並在窗邊明顯處揮舞亮色衣物求救。"
+      },
+      {
+        id: 14,
+        category: "走火警與防災",
+        question: "學校進行火警演習響起警報時，同學應該怎樣做？",
+        options: ["保持鎮定，聽從老師指示迅速排隊前往集合點", "大聲尖叫並隨意奔跑", "收拾書包整理玩具", "留在教室繼續做功課"],
+        answer: 0,
+        explanation: "聽到火警鐘響應保持鎮靜，不推擠、不奔跑、不說話，聽從指導有序撤離。"
+      },
+
+      // --- 課題 3：正面人生觀 (Positive Mindset) ---
+      {
+        id: 15,
+        category: "正面人生觀",
+        question: "當我們在考試或比賽中取得不理想的成績時，最積極正面的態度是：",
+        options: ["反思錯誤原因，制定改進計劃繼續努力", "發脾氣並怪責老師或題目太難", "放棄學習再也不努力", "瞞騙家長隱瞞成績"],
+        answer: 0,
+        explanation: "失敗是成功的基石。具備正向思維的人會將挫折視為學習與成長的好機會！"
+      },
+      {
+        id: 16,
+        category: "正面人生觀",
+        question: "以下哪一種行為能展現「感恩與讚賞」的正面人生態度？",
+        options: ["主動感謝家長與老師的付出，並欣賞同學優點", "認為別人對自己的好都是理所當然的", "只關注別人的缺點並嘲笑他人", "從不向幫助自己的人說謝謝"],
+        answer: 0,
+        explanation: "懂得感恩與欣賞他人，能建立良好的人際關係，讓自己與周圍的人都充滿正能量。"
+      },
+      {
+        id: 17,
+        category: "正面人生觀",
+        question: "當與同學發生意見分歧或爭執時，以下哪種溝通方式最合適？",
+        options: ["保持冷靜，傾聽對方想法，和平理性討論", "大聲吵架大叫強迫對方聽自己的", "拉攏其他同學孤立對方", "拒絕溝通並永遠絕交"],
+        answer: 0,
+        explanation: "同理心與冷靜傾聽是解決衝突的關鍵，尊重不同觀點才能建立長久友誼。"
+      },
+      {
+        id: 18,
+        category: "正面人生觀",
+        question: "遇到困難感到焦慮或壓力大時，以下哪種紓緩方法是健康正面的？",
+        options: ["與家人或信任的人傾訴，適度運動放鬆", "長時間暴飲暴食沉迷電子遊戲", "向無辜的人發脾氣宣洩", "把情緒藏在心裡不理會"],
+        answer: 0,
+        explanation: "透過傾訴、運動、聽音樂等健康途徑宣洩壓力，能維護心理健康。"
+      },
+      {
+        id: 19,
+        category: "正面人生觀",
+        question: "什麼是「成長型思維 (Growth Mindset)」的表現？",
+        options: ["相信能力可以透過努力與練習不斷進步", "認為聰明是天生的，再練習也沒用", "害怕嘗試新事物因為怕失敗", "遇到難題立刻放棄"],
+        answer: 0,
+        explanation: "成長型思維相信大腦就像肌肉一樣，只要經過持續努力與練習就能變得更強大！"
+      },
+      {
+        id: 20,
+        category: "正面人生觀",
+        question: "面對挫折時，心想「這只是暫時的挑戰，我可以學到經驗」，屬於什麼思考模式？",
+        options: ["正向積極思考", "消極悲觀思考", "逃避現實思考", "自大自滿思考"],
+        answer: 0,
+        explanation: "正向思考能幫助我們在困難中尋找希望與解題方法，克服生命中的各項挑戰。"
+      },
+      {
+        id: 21,
+        category: "正面人生觀",
+        question: "建立良好人際關係的重要基礎是：",
+        options: ["尊重他人、誠實友善及具備同理心", "用金錢或玩具討好別人", "只跟成績頂尖的同學說話", "強迫別人順從自己的意思"],
+        answer: 0,
+        explanation: "互相尊重、誠實真誠與同理心是待人接物的黃金法則。"
+      },
+      {
+        id: 22,
+        category: "正面人生觀",
+        question: "當你看見同學在活動中失敗而感到沮喪時，你應該怎樣做？",
+        options: ["給予鼓勵與支持，陪他一起分析改進", "在旁邊拍手嘲笑同學", "到處宣揚同學失敗的事", "裝作沒看到冷漠離開"],
+        answer: 0,
+        explanation: "在朋友遇到困難時及時給予鼓勵與陪伴，展現關懷與團隊合作精神。"
+      },
+
+      // --- 課題 4：能量轉換過程 (Energy Conversion) ---
+      {
+        id: 23,
+        category: "能量轉換",
+        question: "家中的電風扇在運作時，主要的能量轉換過程是什麼？",
+        options: ["電能 轉換為 動能（及少許熱能）", "光能 轉換為 電能", "化學能 轉換為 聲能", "動能 轉換為 化學能"],
+        answer: 0,
+        explanation: "電風扇輸入電能，驅動馬達旋轉輸出風力的動能，運轉時馬達亦會產生少許熱能。"
+      },
+      {
+        id: 24,
+        category: "能量轉換",
+        question: "打開手電筒時，電池內的化學能最終主要轉換為什麼能量？",
+        options: ["光能（及少許熱能）", "水能", "重力勢能", "核能"],
+        answer: 0,
+        explanation: "手電筒電池儲存化學能，通電後經燈泡發光輸出光能與熱能。"
+      },
+      {
+        id: 25,
+        category: "能量轉換",
+        question: "水力發電廠利用高處流下的水流發電，其能量轉換過程是：",
+        options: ["重力勢能 ➔ 動能 ➔ 電能", "電能 ➔ 光能 ➔ 化學能", "熱能 ➔ 核能 ➔ 聲能", "光能 ➔ 動能 ➔ 勢能"],
+        answer: 0,
+        explanation: "高處的水具有重力勢能，向下流動變成動能衝擊水輪機，進而推動發電機產生電能。"
+      },
+      {
+        id: 26,
+        category: "能量轉換",
+        question: "打開電視機觀看節目時，輸入的電能會轉換成哪些能量輸出？",
+        options: ["光能、聲能 與 熱能", "只有化學能", "水能與風能", "原子能與重力能"],
+        answer: 0,
+        explanation: "電視機消耗電能，產生屏幕畫面（光能）、喇叭聲音（聲能）以及機身散熱（熱能）。"
+      },
+      {
+        id: 27,
+        category: "能量轉換",
+        question: "太陽能計算機在光照下運作，其能量轉換過程是：",
+        options: ["光能 轉換為 電能", "聲能 轉換為 風能", "熱能 轉換為 核能", "化學能 轉換為 重力能"],
+        answer: 0,
+        explanation: "太陽能板吸收環境中的光能並將其直接轉換為電能供計算機運作。"
+      },
+      {
+        id: 28,
+        category: "能量轉換",
+        question: "使用微波爐加熱食物時，輸入的電能主要轉換為什麼能量？",
+        options: ["熱能（微波輻射使水分子運動產熱）", "光能與聲能", "機械動能", "化學位能"],
+        answer: 0,
+        explanation: "微波爐將電能轉換為微波電磁能，激發食物內部水分子高速振盪摩擦產生熱能。"
+      },
+      {
+        id: 29,
+        category: "能量轉換",
+        question: "人體吃下食物後能夠進行跑步運動，這是什麼能量轉換？",
+        options: ["化學能（食物）轉換為 動能與熱能", "電能 轉換為 光能", "核能 轉換為 風能", "光能 轉換為 聲能"],
+        answer: 0,
+        explanation: "食物中蘊含營養化學能，人體消化吸收後轉化為肌肉運動的動能與維持體溫的熱能。"
+      },
+      {
+        id: 30,
+        category: "能量轉換",
+        question: "風力發電機將風吹動葉片轉換成電力，過程是：",
+        options: ["動能（風力）轉換為 電能", "電能 轉換為 化學能", "熱能 轉換為 光能", "聲能 轉換為 勢能"],
+        answer: 0,
+        explanation: "風吹動發電機葉片轉動（動能），帶動內部發電機轉子切割磁力線產生電能。"
+      }
+    ];
+
+    /* =========================================================================
+       3. BOSS DEFINITION DATA (6 Sequential Bosses)
+       ========================================================================= */
+    const BOSSES = [
+      { id: 1, name: "火焰小霸王", topic: "走火警與防災", color: "#f97316", hp: 800, emoji: "🔥", killReq: 15 },
+      { id: 2, name: "繃帶包包怪", topic: "受傷處理", color: "#ec4899", hp: 1500, emoji: "🩹", killReq: 40 },
+      { id: 3, name: "烏雲密布俠", topic: "正面人生觀", color: "#8b5cf6", hp: 2500, emoji: "🌧️", killReq: 75 },
+      { id: 4, name: "風車狂暴魔", topic: "能量轉換", color: "#06b6d4", hp: 4000, emoji: "🌀", killReq: 120 },
+      { id: 5, name: "濃煙大魔王", topic: "防災與急救", color: "#64748b", hp: 6000, emoji: "💨", killReq: 175 },
+      { id: 6, name: "超級發電機 (終極Boss)", topic: "全能綜合考驗", color: "#eab308", hp: 9500, emoji: "⚡", killReq: 240 }
+    ];
+
+    /* =========================================================================
+       4. GAME STATE & VARIABLES
+       ========================================================================= */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let state = {
+      running: false,
+      paused: false,
+      kills: 0,
+      correctAnswers: 0,
+      totalQuestionsAsked: 0,
+      currentBossIndex: 0,
+      activeBoss: null,
+      questionPool: [...QUESTION_BANK],
+      currentQuestion: null,
+      pendingUpgrade: false,
+      bossTriggerHpPercent: [75, 50, 25],
+      bossTriggeredMilestones: []
+    };
+
+    // Responsive Canvas Resize
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    /* Player Object */
+    const player = {
+      x: 0,
+      y: 0,
+      radius: 20,
+      hp: 100,
+      maxHp: 100,
+      speed: 3.5,
+      level: 1,
+      exp: 0,
+      maxExp: 10,
+      // Weapon stats
+      damageMult: 1,
+      magicOrbCount: 1,
+      magicOrbTimer: 0,
+      shieldCount: 0,
+      shieldAngle: 0,
+      lightningLevel: 0,
+      lightningTimer: 0,
+      magnetRange: 120
+    };
+
+    let keys = {};
+    let joystickVector = { x: 0, y: 0 };
+    let enemies = [];
+    let bullets = [];
+    let gems = [];
+    let particles = [];
+    let damageNumbers = [];
+
+    /* Keyboard Events */
+    window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+    window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+    /* =========================================================================
+       TOUCH & JOYSTICK CONTROLS (iPad & Touch Device Optimized)
+       ========================================================================= */
+    const joyZone = document.getElementById('joystickZone');
+    const joyKnob = document.getElementById('joystickKnob');
+
+    let touchVector = { x: 0, y: 0 };
+    let joystickTouchId = null;
+    let canvasTouchId = null;
+
+    // Helper: Reset touch vector completely
+    function resetTouchVector() {
+      touchVector.x = 0;
+      touchVector.y = 0;
+    }
+
+    function resetJoystickUI() {
+      joystickTouchId = null;
+      joyKnob.style.transform = `translate(0px, 0px)`;
+    }
+
+    // Virtual Joystick Touch Handlers
+    joyZone.addEventListener('touchstart', (e) => {
+      audio.init();
+      if (e.cancelable) e.preventDefault();
+      if (joystickTouchId === null && e.changedTouches.length > 0) {
+        const touch = e.changedTouches[0];
+        joystickTouchId = touch.identifier;
+        updateJoystickPos(touch.clientX, touch.clientY);
+      }
+    }, { passive: false });
+
+    joyZone.addEventListener('touchmove', (e) => {
+      if (e.cancelable) e.preventDefault();
+      if (joystickTouchId !== null) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === joystickTouchId) {
+            updateJoystickPos(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+            break;
+          }
+        }
+      }
+    }, { passive: false });
+
+    const handleJoystickTouchEnd = (e) => {
+      if (e.cancelable) e.preventDefault();
+      if (joystickTouchId !== null) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === joystickTouchId) {
+            resetJoystickUI();
+            if (canvasTouchId === null) {
+              resetTouchVector();
+            }
+            break;
+          }
+        }
+      }
+    };
+
+    joyZone.addEventListener('touchend', handleJoystickTouchEnd, { passive: false });
+    joyZone.addEventListener('touchcancel', handleJoystickTouchEnd, { passive: false });
+
+    function updateJoystickPos(clientX, clientY) {
+      const rect = joyZone.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const dx = clientX - centerX;
+      const dy = clientY - centerY;
+      const dist = Math.hypot(dx, dy);
+      const maxRadius = rect.width / 2 - 10;
+
+      if (dist === 0) {
+        touchVector = { x: 0, y: 0 };
+        joyKnob.style.transform = `translate(0px, 0px)`;
+        return;
+      }
+
+      const angle = Math.atan2(dy, dx);
+      const moveDist = Math.min(dist, maxRadius);
+      const knobX = Math.cos(angle) * moveDist;
+      const knobY = Math.sin(angle) * moveDist;
+
+      joyKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+
+      const magnitude = moveDist / maxRadius;
+      const vx = Math.cos(angle) * magnitude;
+      const vy = Math.sin(angle) * magnitude;
+
+      touchVector.x = isNaN(vx) ? 0 : vx;
+      touchVector.y = isNaN(vy) ? 0 : vy;
+    }
+
+    // Direct Canvas Touch Control (Tap / Drag anywhere on screen)
+    canvas.addEventListener('touchstart', (e) => {
+      audio.init();
+      if (e.cancelable) e.preventDefault();
+      if (canvasTouchId === null && e.changedTouches.length > 0 && state.running && !state.paused) {
+        const touch = e.changedTouches[0];
+        canvasTouchId = touch.identifier;
+        updateCanvasTouchPos(touch.clientX, touch.clientY);
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.cancelable) e.preventDefault();
+      if (canvasTouchId !== null && state.running && !state.paused) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === canvasTouchId) {
+            updateCanvasTouchPos(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+            break;
+          }
+        }
+      }
+    }, { passive: false });
+
+    const handleCanvasTouchEnd = (e) => {
+      if (e.cancelable) e.preventDefault();
+      if (canvasTouchId !== null) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === canvasTouchId) {
+            canvasTouchId = null;
+            if (joystickTouchId === null) {
+              resetTouchVector();
+            }
+            break;
+          }
+        }
+      }
+    };
+
+    canvas.addEventListener('touchend', handleCanvasTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', handleCanvasTouchEnd, { passive: false });
+
+    function updateCanvasTouchPos(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const targetX = clientX - rect.left;
+      const targetY = clientY - rect.top;
+
+      const dx = targetX - player.x;
+      const dy = targetY - player.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist < 15) {
+        touchVector = { x: 0, y: 0 };
+        return;
+      }
+
+      const angle = Math.atan2(dy, dx);
+      const magnitude = Math.min(1, dist / 90);
+      const vx = Math.cos(angle) * magnitude;
+      const vy = Math.sin(angle) * magnitude;
+
+      touchVector.x = isNaN(vx) ? 0 : vx;
+      touchVector.y = isNaN(vy) ? 0 : vy;
+    }
+
+    // Safety check: Reset inputs when window loses focus
+    window.addEventListener('blur', () => {
+      keys = {};
+      resetTouchVector();
+      resetJoystickUI();
+      canvasTouchId = null;
+    });
+
+    /* =========================================================================
+       5. GAME ENTITIES & SPAWNING
+       ========================================================================= */
+    class Enemy {
+      constructor(x, y, type = 'normal') {
+        this.x = x;
+        this.y = y;
+        this.type = type;
+        this.radius = type === 'fast' ? 14 : (type === 'tank' ? 28 : 18);
+        this.hp = type === 'tank' ? 65 : (type === 'fast' ? 15 : 30);
+        this.maxHp = this.hp;
+        this.speed = type === 'fast' ? 2.4 : (type === 'tank' ? 1.0 : 1.6);
+        this.color = type === 'fast' ? '#38bdf8' : (type === 'tank' ? '#a855f7' : '#f43f5e');
+        this.emoji = type === 'fast' ? '⚡' : (type === 'tank' ? '👾' : '👻');
+        this.expValue = type === 'tank' ? 5 : (type === 'fast' ? 2 : 1);
+      }
+      update() {
+        const angle = Math.atan2(player.y - this.y, player.x - this.x);
+        this.x += Math.cos(angle) * this.speed;
+        this.y += Math.sin(angle) * this.speed;
+      }
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // Draw Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.beginPath();
+        ctx.ellipse(0, this.radius + 2, this.radius * 0.8, this.radius * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw Character Body
+        ctx.font = `${this.radius * 1.8}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.emoji, 0, 0);
+
+        // HP bar if injured
+        if (this.hp < this.maxHp) {
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(-15, -this.radius - 10, 30, 5);
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(-15, -this.radius - 10, (this.hp / this.maxHp) * 30, 5);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    class Boss {
+      constructor(data) {
+        this.data = data;
+        this.x = player.x + (Math.random() < 0.5 ? -400 : 400);
+        this.y = player.y + (Math.random() < 0.5 ? -400 : 400);
+        this.radius = 45;
+        this.hp = data.hp;
+        this.maxHp = data.hp;
+        this.speed = 1.1;
+        this.stunnedTimer = 0;
+        this.pulseAngle = 0;
+      }
+      update() {
+        if (this.stunnedTimer > 0) {
+          this.stunnedTimer--;
+          return;
+        }
+        const angle = Math.atan2(player.y - this.y, player.x - this.x);
+        this.x += Math.cos(angle) * this.speed;
+        this.y += Math.sin(angle) * this.speed;
+        this.pulseAngle += 0.05;
+      }
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        // Glowing Aura
+        const auraRadius = this.radius + Math.sin(this.pulseAngle) * 5 + 8;
+        ctx.fillStyle = this.data.color + '44';
+        ctx.beginPath();
+        ctx.arc(0, 0, auraRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Stunned stars effect
+        if (this.stunnedTimer > 0) {
+          ctx.font = '20px sans-serif';
+          ctx.fillText('⭐暈眩中⭐', 0, -this.radius - 20);
+        }
+
+        // Draw Boss Emoji
+        ctx.font = `${this.radius * 1.8}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.data.emoji, 0, 0);
+
+        ctx.restore();
+      }
+    }
+
+    class Bullet {
+      constructor(x, y, targetX, targetY, damage) {
+        this.x = x;
+        this.y = y;
+        const angle = Math.atan2(targetY - y, targetX - x);
+        this.vx = Math.cos(angle) * 8;
+        this.vy = Math.sin(angle) * 8;
+        this.radius = 7;
+        this.damage = damage;
+        this.life = 120; // frames
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+      }
+      draw() {
+        ctx.save();
+        ctx.fillStyle = '#f59e0b';
+        ctx.shadowColor = '#fbbf24';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    class ExpGem {
+      constructor(x, y, value) {
+        this.x = x;
+        this.y = y;
+        this.value = value;
+        this.radius = 6;
+      }
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = '#38bdf8';
+        ctx.shadowColor = '#0284c7';
+        ctx.shadowBlur = 8;
+        // Diamond shape
+        ctx.beginPath();
+        ctx.moveTo(0, -this.radius);
+        ctx.lineTo(this.radius, 0);
+        ctx.lineTo(0, this.radius);
+        ctx.lineTo(-this.radius, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    class Particle {
+      constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.vx = (Math.random() - 0.5) * 4;
+        this.vy = (Math.random() - 0.5) * 4;
+        this.radius = Math.random() * 3 + 2;
+        this.alpha = 1;
+        this.life = 30;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= 1 / this.life;
+      }
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    class DamageNumber {
+      constructor(x, y, text, color = '#fbbf24') {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.color = color;
+        this.vy = -1.2;
+        this.alpha = 1;
+        this.life = 40;
+      }
+      update() {
+        this.y += this.vy;
+        this.alpha -= 1 / this.life;
+      }
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.font = 'bold 16px Fredoka, sans-serif';
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+      }
+    }
+
+    /* =========================================================================
+       6. CORE GAME LOGIC & LOOPS
+       ========================================================================= */
+    function initGame() {
+      resetTouchVector();
+      resetJoystickUI();
+      canvasTouchId = null;
+
+      player.x = canvas.width / 2;
+      player.y = canvas.height / 2;
+      player.hp = 100;
+      player.maxHp = 100;
+      player.level = 1;
+      player.exp = 0;
+      player.maxExp = 10;
+      player.damageMult = 1;
+      player.magicOrbCount = 1;
+      player.shieldCount = 0;
+      player.lightningLevel = 0;
+      player.speed = 3.5;
+
+      enemies = [];
+      bullets = [];
+      gems = [];
+      particles = [];
+      damageNumbers = [];
+
+      state.running = true;
+      state.paused = false;
+      state.kills = 0;
+      state.correctAnswers = 0;
+      state.totalQuestionsAsked = 0;
+      state.currentBossIndex = 0;
+      state.activeBoss = null;
+      state.questionPool = [...QUESTION_BANK];
+
+      updateHUD();
+      document.getElementById('bossHud').classList.add('hidden');
+      document.getElementById('startModal').classList.add('hidden');
+      document.getElementById('endModal').classList.add('hidden');
+      document.getElementById('questionModal').classList.add('hidden');
+      document.getElementById('upgradeModal').classList.add('hidden');
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function spawnEnemies() {
+      if (enemies.length < 40 + player.level * 5 && Math.random() < 0.05) {
+        // Spawn around player
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.max(canvas.width, canvas.height) / 2 + 50;
+        const ex = player.x + Math.cos(angle) * dist;
+        const ey = player.y + Math.sin(angle) * dist;
+
+        const rand = Math.random();
+        let type = 'normal';
+        if (rand < 0.2) type = 'fast';
+        else if (rand < 0.35) type = 'tank';
+
+        enemies.push(new Enemy(ex, ey, type));
+      }
+
+      // Check Boss Spawn Requirements
+      if (!state.activeBoss && state.currentBossIndex < BOSSES.length) {
+        const nextBossData = BOSSES[state.currentBossIndex];
+        if (state.kills >= nextBossData.killReq) {
+          state.activeBoss = new Boss(nextBossData);
+          state.bossTriggeredMilestones = [];
+          showBossHUD(nextBossData);
+        }
+      }
+    }
+
+    function updateHUD() {
+      document.getElementById('hpText').innerText = `${Math.ceil(player.hp)} / ${player.maxHp}`;
+      document.getElementById('hpBar').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+      
+      const expPercent = Math.min(100, Math.floor((player.exp / player.maxExp) * 100));
+      document.getElementById('expBar').style.width = `${expPercent}%`;
+      document.getElementById('expText').innerText = `(${expPercent}%)`;
+
+      document.getElementById('levelBadge').innerText = `Lv.${player.level}`;
+      document.getElementById('killText').innerText = state.kills;
+      document.getElementById('scoreText').innerText = `${state.correctAnswers}/${state.totalQuestionsAsked}`;
+
+      if (state.activeBoss) {
+        document.getElementById('bossHpText').innerText = `${Math.ceil(state.activeBoss.hp)} / ${state.activeBoss.maxHp}`;
+        document.getElementById('bossHpBar').style.width = `${Math.max(0, (state.activeBoss.hp / state.activeBoss.maxHp) * 100)}%`;
+      }
+    }
+
+    function showBossHUD(bossData) {
+      document.getElementById('bossIcon').innerText = bossData.emoji;
+      document.getElementById('bossName').innerText = `Boss: ${bossData.name} (${bossData.topic})`;
+      document.getElementById('bossHud').classList.remove('hidden');
+      createExplosion(player.x, player.y, '#f59e0b', 30);
+    }
+
+    /* Handle Player Weapon Auto Attack */
+    function updateWeapons() {
+      // 1. Magic Orbs (Targets nearest enemy or boss)
+      player.magicOrbTimer++;
+      if (player.magicOrbTimer >= Math.max(15, 45 - player.magicOrbCount * 5)) {
+        player.magicOrbTimer = 0;
+
+        let targets = [...enemies];
+        if (state.activeBoss) targets.push(state.activeBoss);
+
+        if (targets.length > 0) {
+          // Find nearest target
+          targets.sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y));
+          
+          for (let i = 0; i < Math.min(player.magicOrbCount, targets.length); i++) {
+            const t = targets[i];
+            bullets.push(new Bullet(player.x, player.y, t.x, t.y, 20 * player.damageMult));
+          }
+          audio.playShoot();
+        }
+      }
+
+      // 2. Shield (Orbiting Books around player)
+      if (player.shieldCount > 0) {
+        player.shieldAngle += 0.04;
+        const shieldRadius = 65;
+        for (let i = 0; i < player.shieldCount; i++) {
+          const angle = player.shieldAngle + (i * Math.PI * 2) / player.shieldCount;
+          const sx = player.x + Math.cos(angle) * shieldRadius;
+          const sy = player.y + Math.sin(angle) * shieldRadius;
+
+          // Check hit against enemies
+          enemies.forEach(e => {
+            if (Math.hypot(e.x - sx, e.y - sy) < e.radius + 12) {
+              e.hp -= 1.5 * player.damageMult;
+              createExplosion(sx, sy, '#60a5fa', 2);
+            }
+          });
+          if (state.activeBoss) {
+            if (Math.hypot(state.activeBoss.x - sx, state.activeBoss.y - sy) < state.activeBoss.radius + 12) {
+              damageBoss(1.5 * player.damageMult);
+            }
+          }
+        }
+      }
+
+      // 3. Lightning Strike
+      if (player.lightningLevel > 0) {
+        player.lightningTimer++;
+        if (player.lightningTimer >= 90 - player.lightningLevel * 10) {
+          player.lightningTimer = 0;
+          let targets = [...enemies];
+          if (state.activeBoss) targets.push(state.activeBoss);
+
+          if (targets.length > 0) {
+            const randomTarget = targets[Math.floor(Math.random() * targets.length)];
+            const dmg = 45 * player.damageMult;
+            randomTarget.hp -= dmg;
+            damageNumbers.push(new DamageNumber(randomTarget.x, randomTarget.y - 10, `⚡${Math.ceil(dmg)}`, '#38bdf8'));
+            createExplosion(randomTarget.x, randomTarget.y, '#38bdf8', 12);
+            audio.playHit();
+          }
+        }
+      }
+    }
+
+    function createExplosion(x, y, color, count = 8) {
+      for (let i = 0; i < count; i++) {
+        particles.push(new Particle(x, y, color));
+      }
+    }
+
+    /* =========================================================================
+       7. QUESTION & MODAL SYSTEM
+       ========================================================================= */
+    function triggerQuestion(isBossQuestion = false) {
+      state.paused = true;
+
+      // Pick random question from pool
+      if (state.questionPool.length === 0) {
+        state.questionPool = [...QUESTION_BANK]; // reset pool if ran out
+      }
+      const qIdx = Math.floor(Math.random() * state.questionPool.length);
+      state.currentQuestion = state.questionPool.splice(qIdx, 1)[0];
+
+      // Populate UI Modal
+      document.getElementById('qCategory').innerText = state.currentQuestion.category;
+      document.getElementById('qTriggerType').innerText = isBossQuestion ? '⚠️ BOSS 關卡問答' : '✨ 升級特訓';
+      document.getElementById('qTitle').innerText = state.currentQuestion.question;
+
+      const optionsDiv = document.getElementById('qOptions');
+      optionsDiv.innerHTML = '';
+      document.getElementById('qFeedback').classList.add('hidden');
+
+      state.currentQuestion.options.forEach((optText, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left p-3.5 bg-slate-800 hover:bg-slate-700 active:bg-amber-500/20 border-2 border-slate-700 hover:border-amber-400 rounded-2xl text-sm font-bold text-white transition-all flex items-center space-x-3';
+        btn.innerHTML = `
+          <span class="w-7 h-7 rounded-full bg-slate-700 text-amber-300 font-black flex items-center justify-center text-xs flex-shrink-0">${String.fromCharCode(65 + idx)}</span>
+          <span>${optText}</span>
+        `;
+        btn.onclick = () => handleAnswerSelect(idx, isBossQuestion);
+        optionsDiv.appendChild(btn);
+      });
+
+      document.getElementById('questionModal').classList.remove('hidden');
+    }
+
+    function handleAnswerSelect(selectedIndex, isBossQuestion) {
+      const q = state.currentQuestion;
+      const isCorrect = selectedIndex === q.answer;
+      state.totalQuestionsAsked++;
+
+      const feedbackDiv = document.getElementById('qFeedback');
+      const bannerDiv = document.getElementById('qResultBanner');
+      const expDiv = document.getElementById('qExplanation');
+      const optionsDiv = document.getElementById('qOptions');
+
+      // Disable option buttons
+      Array.from(optionsDiv.children).forEach((btn, idx) => {
+        btn.onclick = null;
+        if (idx === q.answer) {
+          btn.className = 'w-full text-left p-3.5 bg-emerald-950/80 border-2 border-emerald-400 rounded-2xl text-sm font-bold text-emerald-200 flex items-center space-x-3';
+        } else if (idx === selectedIndex && !isCorrect) {
+          btn.className = 'w-full text-left p-3.5 bg-rose-950/80 border-2 border-rose-500 rounded-2xl text-sm font-bold text-rose-200 flex items-center space-x-3';
+        } else {
+          btn.className = 'w-full text-left p-3.5 bg-slate-900 opacity-40 rounded-2xl text-sm font-bold text-slate-400 flex items-center space-x-3';
+        }
+      });
+
+      if (isCorrect) {
+        state.correctAnswers++;
+        audio.playCorrect();
+        bannerDiv.innerHTML = `<span class="text-emerald-400">✅ 答對了！非常棒！</span>`;
+      } else {
+        audio.playWrong();
+        bannerDiv.innerHTML = `<span class="text-rose-400">❌ 答錯了！請記住正確知識！</span>`;
+      }
+
+      expDiv.innerText = `【解析】${q.explanation}`;
+      feedbackDiv.classList.remove('hidden');
+
+      // Continue button handler
+      document.getElementById('continueBtn').onclick = () => {
+        document.getElementById('questionModal').classList.add('hidden');
+
+        if (isBossQuestion) {
+          if (isCorrect) {
+            // Boss takes 20% bonus damage and is stunned
+            if (state.activeBoss) {
+              const extraDmg = state.activeBoss.maxHp * 0.2;
+              state.activeBoss.hp -= extraDmg;
+              state.activeBoss.stunnedTimer = 180; // 3 seconds
+              damageNumbers.push(new DamageNumber(state.activeBoss.x, state.activeBoss.y - 30, `💥重創 -${Math.ceil(extraDmg)}`, '#f59e0b'));
+            }
+          } else {
+            // Boss heals 20% HP penalty!
+            if (state.activeBoss) {
+              const heal = state.activeBoss.maxHp * 0.18;
+              state.activeBoss.hp = Math.min(state.activeBoss.maxHp, state.activeBoss.hp + heal);
+              damageNumbers.push(new DamageNumber(state.activeBoss.x, state.activeBoss.y - 30, `❤️‍🩹Boss 回血 +${Math.ceil(heal)}`, '#ef4444'));
+            }
+          }
+          state.paused = false;
+        } else {
+          // Regular EXP level up question
+          if (isCorrect) {
+            showUpgradeModal();
+          } else {
+            state.paused = false; // resume directly without skill upgrade
+          }
+        }
+        updateHUD();
+      };
+    }
+
+    /* Skill Upgrades Modal */
+    function showUpgradeModal() {
+      const skillsPool = [
+        { id: 'orb', title: '🔮 魔法飛彈 +1', desc: '增加自動發射的魔法飛彈數量' },
+        { id: 'shield', title: '📖 知識護盾 +1', desc: '增加環繞主角防禦的常識書本' },
+        { id: 'lightning', title: '⚡ 雷擊特訓 +1', desc: '定期對隨機敵人造成天雷打擊' },
+        { id: 'dmg', title: '⚔️ 攻擊力 +25%', desc: '提升所有武器與技能的傷害值' },
+        { id: 'speed', title: '👟 移速提升 +15%', desc: '提高主角的走位移動速度' },
+        { id: 'heal', title: '💖 立即回復 50% HP', desc: '為主角補充大量生命值' }
+      ];
+
+      // Pick 3 random
+      const shuffled = skillsPool.sort(() => 0.5 - Math.random()).slice(0, 3);
+      const cardsDiv = document.getElementById('skillCards');
+      cardsDiv.innerHTML = '';
+
+      shuffled.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'bg-slate-800 border-2 border-slate-700 hover:border-yellow-400 rounded-2xl p-4 text-left flex flex-col justify-between cursor-pointer transition-all transform hover:scale-105 active:scale-95 shadow-lg';
+        card.innerHTML = `
+          <div>
+            <h3 class="font-black text-yellow-300 text-base mb-1">${s.title}</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">${s.desc}</p>
+          </div>
+          <button class="mt-4 w-full py-2 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xs rounded-xl">
+            選擇技能
+          </button>
+        `;
+        card.onclick = () => selectUpgrade(s.id);
+        cardsDiv.appendChild(card);
+      });
+
+      document.getElementById('upgradeModal').classList.remove('hidden');
+    }
+
+    function selectUpgrade(skillId) {
+      if (skillId === 'orb') player.magicOrbCount++;
+      else if (skillId === 'shield') player.shieldCount++;
+      else if (skillId === 'lightning') player.lightningLevel++;
+      else if (skillId === 'dmg') player.damageMult += 0.25;
+      else if (skillId === 'speed') player.speed += 0.5;
+      else if (skillId === 'heal') player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.5);
+
+      document.getElementById('upgradeModal').classList.add('hidden');
+      state.paused = false;
+      updateHUD();
+    }
+
+    /* Check Boss Health Trigger Milestones */
+    function checkBossMilestones() {
+      if (!state.activeBoss) return;
+      const percent = (state.activeBoss.hp / state.activeBoss.maxHp) * 100;
+
+      state.bossTriggerHpPercent.forEach(threshold => {
+        if (percent <= threshold && !state.bossTriggeredMilestones.includes(threshold)) {
+          state.bossTriggeredMilestones.push(threshold);
+          triggerQuestion(true); // Trigger Boss question!
+        }
+      });
+    }
+
+    function damageBoss(dmg) {
+      if (!state.activeBoss) return;
+      state.activeBoss.hp -= dmg;
+      createExplosion(state.activeBoss.x, state.activeBoss.y, '#f59e0b', 3);
+      checkBossMilestones();
+
+      if (state.activeBoss.hp <= 0) {
+        // Boss Defeated!
+        createExplosion(state.activeBoss.x, state.activeBoss.y, '#ef4444', 40);
+        audio.playCorrect();
+
+        // Spawn multiple exp gems
+        for (let i = 0; i < 10; i++) {
+          gems.push(new ExpGem(state.activeBoss.x + (Math.random() - 0.5) * 60, state.activeBoss.y + (Math.random() - 0.5) * 60, 5));
+        }
+
+        state.activeBoss = null;
+        state.currentBossIndex++;
+        document.getElementById('bossHud').classList.add('hidden');
+
+        // Check if all 6 bosses defeated (Victory)
+        if (state.currentBossIndex >= BOSSES.length) {
+          triggerEndGame(true);
+        }
+      }
+    }
+
+    function triggerEndGame(isVictory) {
+      state.running = false;
+      const endModal = document.getElementById('endModal');
+      const title = document.getElementById('endTitle');
+      const emoji = document.getElementById('endEmoji');
+
+      if (isVictory) {
+        title.innerText = '🏆 通關成功！全能常識學霸！';
+        emoji.innerText = '👑';
+      } else {
+        title.innerText = '💥 冒險結束！繼續加油！';
+        emoji.innerText = '📚';
+      }
+
+      const acc = state.totalQuestionsAsked > 0 ? Math.round((state.correctAnswers / state.totalQuestionsAsked) * 100) : 0;
+      document.getElementById('endLevel').innerText = `Lv.${player.level}`;
+      document.getElementById('endKills').innerText = `${state.kills} 隻`;
+      document.getElementById('endAccuracy').innerText = `${acc}% (${state.correctAnswers}/${state.totalQuestionsAsked})`;
+
+      let rank = 'C 級 常識生手';
+      if (acc >= 90 && isVictory) rank = 'SSS 級 終極常識神童 ✨';
+      else if (acc >= 80) rank = 'S 級 常識大師 🎓';
+      else if (acc >= 60) rank = 'A 級 常識能手 🌟';
+      document.getElementById('endRank').innerText = rank;
+
+      endModal.classList.remove('hidden');
+    }
+
+    /* =========================================================================
+       8. MAIN GAME UPDATE & RENDER LOOP
+       ========================================================================= */
+    function gameLoop() {
+      if (!state.running) return;
+
+      if (!state.paused) {
+        // 1. Move Player
+        let dx = 0;
+        let dy = 0;
+
+        if (keys['w'] || keys['arrowup']) dy -= 1;
+        if (keys['s'] || keys['arrowdown']) dy += 1;
+        if (keys['a'] || keys['arrowleft']) dx -= 1;
+        if (keys['d'] || keys['arrowright']) dx += 1;
+
+        // Overlay touch vector if active
+        if (touchVector.x !== 0 || touchVector.y !== 0) {
+          dx = touchVector.x;
+          dy = touchVector.y;
+        }
+
+        // Validate values against NaN or overflow
+        if (isNaN(dx)) dx = 0;
+        if (isNaN(dy)) dy = 0;
+
+        const len = Math.hypot(dx, dy);
+        if (len > 0) {
+          const scale = len > 1 ? 1 / len : 1;
+          player.x += dx * scale * player.speed;
+          player.y += dy * scale * player.speed;
+        }
+
+        // Clamp inside map canvas bounds
+        player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+        player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+
+        // 2. Spawn & Update Enemies
+        spawnEnemies();
+
+        enemies.forEach((e, idx) => {
+          e.update();
+          // Check Player Collision
+          if (Math.hypot(e.x - player.x, e.y - player.y) < e.radius + player.radius) {
+            player.hp -= 0.35;
+            if (player.hp <= 0) triggerEndGame(false);
+            updateHUD();
+          }
+        });
+
+        // 3. Update Boss
+        if (state.activeBoss) {
+          state.activeBoss.update();
+          if (Math.hypot(state.activeBoss.x - player.x, state.activeBoss.y - player.y) < state.activeBoss.radius + player.radius) {
+            player.hp -= 0.8;
+            if (player.hp <= 0) triggerEndGame(false);
+            updateHUD();
+          }
+        }
+
+        // 4. Update Bullets
+        bullets.forEach((b, bIdx) => {
+          b.update();
+          // Check Enemy collision
+          enemies.forEach(e => {
+            if (Math.hypot(e.x - b.x, e.y - b.y) < e.radius + b.radius) {
+              e.hp -= b.damage;
+              b.life = 0;
+              createExplosion(b.x, b.y, '#f59e0b', 3);
+            }
+          });
+          // Check Boss collision
+          if (state.activeBoss && Math.hypot(state.activeBoss.x - b.x, state.activeBoss.y - b.y) < state.activeBoss.radius + b.radius) {
+            damageBoss(b.damage);
+            b.life = 0;
+          }
+        });
+        bullets = bullets.filter(b => b.life > 0);
+
+        // Filter Dead Enemies & Drop Gems
+        enemies = enemies.filter(e => {
+          if (e.hp <= 0) {
+            state.kills++;
+            createExplosion(e.x, e.y, e.color, 8);
+            gems.push(new ExpGem(e.x, e.y, e.expValue));
+            return false;
+          }
+          return true;
+        });
+
+        // 5. Update Gems & Collection
+        gems.forEach(g => {
+          const dist = Math.hypot(player.x - g.x, player.y - g.y);
+          if (dist < player.magnetRange) {
+            g.x += (player.x - g.x) * 0.12;
+            g.y += (player.y - g.y) * 0.12;
+          }
+          if (dist < player.radius + g.radius) {
+            player.exp += g.value;
+            audio.playGem();
+            g.collected = true;
+
+            // Check Level Up
+            if (player.exp >= player.maxExp) {
+              player.level++;
+              player.exp -= player.maxExp;
+              player.maxExp = Math.floor(player.maxExp * 1.4);
+              updateHUD();
+              triggerQuestion(false); // Trigger Level-up 常識問題!
+            }
+            updateHUD();
+          }
+        });
+        gems = gems.filter(g => !g.collected);
+
+        // 6. Weapons Logic
+        updateWeapons();
+
+        // 7. Particles & Floating Texts
+        particles.forEach(p => p.update());
+        particles = particles.filter(p => p.alpha > 0);
+
+        damageNumbers.forEach(d => d.update());
+        damageNumbers = damageNumbers.filter(d => d.alpha > 0);
+      }
+
+      /* ================= CANVAS RENDER ================= */
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Grid Background
+      ctx.strokeStyle = '#282d47';
+      ctx.lineWidth = 1;
+      const gridSize = 60;
+      for (let x = 0; x < canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      // Draw Gems
+      gems.forEach(g => g.draw());
+
+      // Draw Enemies
+      enemies.forEach(e => e.draw());
+
+      // Draw Boss
+      if (state.activeBoss) state.activeBoss.draw();
+
+      // Draw Bullets
+      bullets.forEach(b => b.draw());
+
+      // Draw Player Character
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      
+      // Magnet Range Indicator (Soft Ring)
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, player.magnetRange, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Player Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(0, player.radius + 2, player.radius * 0.8, player.radius * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Player Body (Cute Graduate Hero)
+      ctx.font = `${player.radius * 2}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🎓', 0, 0);
+
+      // Orbiting Shield Books
+      if (player.shieldCount > 0) {
+        ctx.font = '20px sans-serif';
+        for (let i = 0; i < player.shieldCount; i++) {
+          const angle = player.shieldAngle + (i * Math.PI * 2) / player.shieldCount;
+          const sx = Math.cos(angle) * 65;
+          const sy = Math.sin(angle) * 65;
+          ctx.fillText('📘', sx, sy);
+        }
+      }
+
+      ctx.restore();
+
+      // Draw Particles & Damage Numbers
+      particles.forEach(p => p.draw());
+      damageNumbers.forEach(d => d.draw());
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    /* =========================================================================
+       9. BUTTON BINDINGS & STARTUP
+       ========================================================================= */
+    document.getElementById('startBtn').onclick = () => {
+      audio.init();
+      initGame();
+    };
+
+    document.getElementById('restartBtn').onclick = () => {
+      audio.init();
+      initGame();
+    };
+  </script>
+</body>
+</html>
